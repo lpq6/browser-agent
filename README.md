@@ -13,6 +13,11 @@ WSL2 无法直接访问 Windows 的 localhost。如果 Windows Chrome 开启了 
 | `cdp_proxy.py` | CDP 反向代理：WSL localhost → HTTP 代理 → Windows Chrome |
 | `win_browser.py` | 浏览器控制器：通过 CDP 操控 Chrome（CLI + Python 库） |
 
+## 文档
+
+- **[TUTORIAL.md](TUTORIAL.md)** — 从零控制 Windows Chrome 的完整教程（推荐从这里开始）
+- **本文档** — 命令速查
+
 ## 快速开始
 
 ### 1. 启动 Windows Chrome（带远程调试）

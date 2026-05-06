@@ -1,135 +1,111 @@
-# 🤖 Multi-Model Browser Agent
+# win-chrome-cdp
 
-**全自动 AI 浏览器自动化** — 无需手动启动浏览器，Agent 自己搞定一切。
+从 WSL 控制 Windows Chrome 浏览器 —— 通过 CDP (Chrome DevTools Protocol) 反向代理桥接。
+
+## 为什么需要这个？
+
+WSL2 无法直接访问 Windows 的 localhost。如果 Windows Chrome 开启了 `--remote-debugging-port=9222`，WSL 里的工具（Playwright、Puppeteer、自定义脚本）直连 `localhost:9222` 会失败。
+
+本项目提供两个工具：
+
+| 文件 | 作用 |
+|------|------|
+| `cdp_proxy.py` | CDP 反向代理：WSL localhost → HTTP 代理 → Windows Chrome |
+| `win_browser.py` | 浏览器控制器：通过 CDP 操控 Chrome（CLI + Python 库） |
 
 ## 快速开始
 
-```bash
-cd /mnt/d/OpenClaw_Workspace_full/browser-agent
+### 1. 启动 Windows Chrome（带远程调试）
 
-# 直接运行（自动启动浏览器）
-python3 agent.py "搜索免费的视频生成 API"
-
-# 无头模式（后台运行，不显示浏览器窗口）
-python3 agent.py "搜索 xxx" --headless
-
-# 交互模式（连续对话）
-python3 agent.py -i
+```powershell
+# Windows PowerShell
+chrome.exe --remote-debugging-port=9222 --user-data-dir="C:\tmp\chrome-debug"
 ```
 
-**就这么简单！** 不需要手动启动 Chrome，不需要配置端口，不需要任何前置步骤。
-
-## 🎬 Waoowaoo 视频工作流测试
+### 2. 启动 CDP 反向代理
 
 ```bash
-# 测试 waoowaoo 视频生成工作流
-./test_waoowaoo.sh
-
-# 或使用 Python 脚本
-python3 waoowaoo_debug.py
+# WSL
+python3 cdp_proxy.py
 ```
 
-## 使用示例
+### 3. 控制浏览器
 
 ```bash
-# 用免费的 qwen 模型（默认）
-python3 agent.py "打开百度搜索 AI 视频生成"
-
-# 用 grok 模型
-python3 agent.py "打开 x.com 查看消息" -m grok
-
-# 用本地 ollama（完全离线免费）
-python3 agent.py "打开百度" -m ollama
-
-# 无头模式
-python3 agent.py "登录 dreamina.capcut.com 领取积分" --headless
-
-# 列出可用模型
-python3 agent.py --list-models
+python3 win_browser.py status
+python3 win_browser.py open "https://example.com"
+python3 win_browser.py screenshot /tmp/page.png
+python3 win_browser.py snapshot
+python3 win_browser.py click "登录"
+python3 win_browser.py fill 'input[name="email"]' 'test@example.com'
+python3 win_browser.py task "截图当前页面"
 ```
 
-## 可用模型
+## 配置
 
-| Key       | 名称                | 费用     | 说明                     |
-|-----------|---------------------|----------|--------------------------|
-| `qwen`    | Qwen 3.6 Plus (本地) | **免费** | 通过 qwen2api, 默认模型  |
-| `ollama`  | Ollama (本地)        | **免费** | 需要安装 ollama          |
-| `grok`    | Grok (x.ai)         | 付费     | 需要 XAI_API_KEY         |
-| `openai`  | GPT-4o              | 付费     | 需要 OPENAI_API_KEY      |
-| `anthropic`| Claude Sonnet       | 付费     | 需要 ANTHROPIC_API_KEY   |
-| `google`  | Gemini Flash         | 付费     | 需要 GOOGLE_API_KEY      |
+环境变量或 `.env` 文件：
 
-## 工作原理
-
-1. **输入任务** → 你用自然语言描述要做什么
-2. **AI 规划** → LLM 分析任务，规划浏览器操作步骤
-3. **自动执行** → Playwright 自动启动 Chromium，执行点击、输入、导航等操作
-4. **返回结果** → 完成后告诉你结果
-
-## 文件说明
-
-```
-browser-agent/
-├── agent.py              # 主程序（全自动）
-├── .env.example          # 环境变量模板
-└── README.md             # 本文档
-```
-
-## 常见问题
-
-**Q: 需要手动启动浏览器吗？**
-A: 不需要！Agent 会自动启动 Chromium 浏览器执行任务。
-
-**Q: 可以看到浏览器操作过程吗？**
-A: 可以！默认是有头模式（显示浏览器窗口）。加 `--headless` 可以后台运行。
-
-**Q: 支持哪些网站？**
-A: 理论上支持所有网站。但某些网站可能有反爬机制，需要特殊处理。
-
-**Q: 可以登录网站吗？**
-A: 可以！Agent 可以自动填写表单、点击按钮、处理登录流程。
-
-**Q: 如何免费使用？**
-A: 默认使用本地 qwen2api（免费），或使用 ollama（完全离线免费）。
-
-## 🎯 Waoowaoo 自动化调试
-
-本 Agent 可以自动化调试 waoowaoo 视频生成平台：
-
-1. **自动配置** — 自动设置模型、API Key 等
-2. **自动测试** — 自动创建项目、生成剧本、分镜、视频
-3. **问题诊断** — 自动记录错误并尝试解决
-
-### 配置检查
-
-```bash
-# 检查 waoowaoo 配置
-docker exec waoowaoo-mysql mysql -u root -pwaoowaoo123 waoowaoo -e "
-SELECT userId, analysisModel, videoModel, audioModel 
-FROM user_preferences 
-WHERE userId = '59341b5a-8d29-4c3f-8eb9-7fd1fad64f78';
-"
-```
-
-### 当前配置状态
-
-| 模型 | 配置值 | 状态 |
+| 变量 | 默认值 | 说明 |
 |------|--------|------|
-| 分析模型 | mimo-v2-pro | ✅ 已配置 |
-| 视频模型 | cogvideox-3 | ✅ 已配置 |
-| 音频模型 | mimo-v2.5-tts | ✅ 已配置 |
-| 口型同步 | fal-ai/kling-video | ⚠️ 需要 FAL API Key |
+| `CDP_PROXY_TARGET` | `localhost:9222` | Windows Chrome CDP 地址 |
+| `CDP_PROXY_LISTEN` | `127.0.0.1:9222` | 代理监听地址 |
+| `CDP_HTTP` | `http://127.0.0.1:9222` | win_browser 连接的 CDP 地址 |
+| `HTTP_PROXY` | (可选) | 上游 HTTP 代理地址 |
 
-### 需要配置的 API Key
+## 命令参考
 
-1. **FAL API Key** — 用于口型同步功能
-   - 注册: https://fal.ai
-   - 免费额度: $5/月
+```
+status                          # 列出 Chrome 标签页
+open <url>                      # 打开新标签页
+snapshot [--target <keyword>]   # DOM 快照
+find <text>                     # 搜索可见元素
+click <text>                    # 按文字点击
+click --selector <css>          # 按选择器点击
+click --index <n>               # 按索引点击
+click-xy <x> <y>                # 按坐标点击
+fill <selector> <value>         # 填充表单
+type <text> [--selector <css>]  # 键入文字
+press <key>                     # 按键 (Enter/Tab/Escape...)
+scroll [--x N] [--y N]          # 滚动
+wait --text <text>              # 等待文字出现
+screenshot <path> [--full-page] # 截图
+media                           # 检查音视频状态
+task <natural language>          # 自然语言任务（安全模式）
+```
 
-2. **智谱 API Key** — 用于 cogvideox-3 视频生成
-   - 注册: https://open.bigmodel.cn
-   - 免费额度: 有
+## 安全边界
 
-3. **Google AI Key** — 用于 Gemini 模型（可选）
-   - 注册: https://ai.google.dev
-   - 免费额度: 有
+`task` 命令自动检测风险场景并**停止操作**：
+
+- 验证码 / CAPTCHA / 人机验证
+- 支付 / 付款 / 充值 / 转账
+- 注册 / 创建账号
+- MFA / 二次验证 / OTP
+- 风控 / 安全验证
+
+## 作为 Python 库使用
+
+```python
+import asyncio
+from win_browser import PageCDP, pick_tab, tabs, ensure_cdp
+
+async def main():
+    ensure_cdp()
+    tab = pick_tab("example.com")
+    async with PageCDP(tab) as page:
+        title = await page.eval("document.title")
+        await page.screenshot("/tmp/example.png")
+        await page.mouse_click(500, 300)
+
+asyncio.run(main())
+```
+
+## 依赖
+
+```bash
+pip install websockets httpx
+```
+
+## License
+
+MIT
